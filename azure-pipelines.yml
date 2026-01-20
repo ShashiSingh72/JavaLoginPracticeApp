@@ -1,0 +1,50 @@
+trigger: none
+
+pool:
+  name: TodoAgent
+
+variables:
+  TOMCAT_HOME: /apache-tomcat-9.0.89
+
+stages:
+  - stage: 
+    jobs:
+      - job: BuildnadArtifact
+        displayName: Build and Publish Artifact
+        steps:
+        - task: Bash@3
+          displayName: Build
+          inputs:
+            targetType: inline
+            script: |
+              mvn clean package
+
+        - task: PublishPipelineArtifact@1
+          displayName: PublishArtifact
+          inputs:
+            targetPath: '$(System.DefaultWorkingDirectory)/target'
+            artifact: 'javaapp'
+
+  - stage: downloadArtifact
+    jobs:
+      - job: downloadArtifact
+        displayName: DownloadArtifact
+        steps:
+        - task: DownloadPipelineArtifact@2
+          displayName: download artifact
+          inputs:
+            buildType: current
+            artifactName: 'javaapp'
+            targetPath: '$(Pipeline.Workspace)/javaapp'
+
+  - stage: copytotomcat
+    jobs:
+      - job: copytotomcat
+        displayName: Copy to Tomcat
+        steps:
+        - task: Bash@3
+          displayName: Deploy to Tomcat
+          inputs:
+            targetType: inline
+            script: |
+              cp -r $(Pipeline.Workspace)/javaapp/*.war $TOMCAT_HOME/webapps/
